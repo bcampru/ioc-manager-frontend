@@ -1,0 +1,86 @@
+image: docker:latest
+
+variables:
+    DOCKER_TLS_CERTDIR: ""
+
+build_prod:
+    tags:
+        - job
+    services:
+        - name: docker:stable-dind
+          command:
+              - /bin/sh
+              - -c
+              - dockerd-entrypoint.sh --insecure-registry 10.1.1.159:8888 || exit
+    stage: build
+    environment:
+        name: production
+        url: http://10.1.1.163
+    script:
+        - docker login -u "gitlab-ci-token" -p "$CI_BUILD_TOKEN" $CI_REGISTRY
+        - docker build --cache-from $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest -f Dockerfile.prod .
+        - docker push $CI_REGISTRY_IMAGE
+    only:
+        - master
+
+build_test:
+    tags:
+        - job
+    services:
+        - name: docker:stable-dind
+          command:
+              - /bin/sh
+              - -c
+              - dockerd-entrypoint.sh --insecure-registry 10.1.1.159:8888 || exit
+    stage: build
+    environment:
+        name: pre-production
+        url: http://10.1.1.163:3000/
+    script:
+        - docker login -u "gitlab-ci-token" -p "$CI_BUILD_TOKEN" $CI_REGISTRY
+        - docker build --cache-from $CI_REGISTRY_IMAGE:test --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:test -f Dockerfile.dev .
+        - docker push $CI_REGISTRY_IMAGE:test
+    only:
+        - PRE
+
+deploy_prod:
+    tags:
+        - deploy
+    services:
+        - name: docker:stable-dind
+          command:
+              - /bin/sh
+              - -c
+              - dockerd-entrypoint.sh --insecure-registry 10.1.1.159:8888 || exit
+    stage: deploy
+    environment:
+        name: production
+        url: http://10.1.1.163
+    script:
+        - docker login -u "gitlab-ci-token" -p "$CI_BUILD_TOKEN" $CI_REGISTRY
+        - docker pull $CI_REGISTRY_IMAGE:latest
+        - docker rm --force ioc-manager-frontend-production
+        - docker run -d --restart=always --name ioc-manager-frontend-production -p 80:3000 $CI_REGISTRY_IMAGE
+    only:
+        - master
+
+deploy_test:
+    tags:
+        - deploy
+    services:
+        - name: docker:stable-dind
+          command:
+              - /bin/sh
+              - -c
+              - dockerd-entrypoint.sh --insecure-registry 10.1.1.159:8888 || exit
+    stage: deploy
+    environment:
+        name: pre-production
+        url: http://10.1.1.163:3000/
+    script:
+        - docker login -u "gitlab-ci-token" -p "$CI_BUILD_TOKEN" $CI_REGISTRY
+        - docker pull $CI_REGISTRY_IMAGE:test
+        - docker rm --force ioc-manager-frontend-test
+        - docker run -d --restart=always --name ioc-manager-frontend-test -p 3000:3000 $CI_REGISTRY_IMAGE:test
+    only:
+        - PRE
