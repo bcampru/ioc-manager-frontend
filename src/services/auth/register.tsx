@@ -1,5 +1,3 @@
-import { setToken } from '../../helpers/token'
-
 export default function service_register(
   email: string,
   password: string,
@@ -26,6 +24,7 @@ export default function service_register(
         if (result.success === true) {
           alert('Registration completed, you can now log in!')
           callback(null)
+          window.location.reload()
         } else return callback(new Error(result.error))
       })
     )

@@ -32,7 +32,7 @@ export default function Auth() {
       alert('Both passwords need to be equal')
       return
     }
-    register(email, password, passwordVerify, name, surname)
+    register(email, password, name, surname)
   }
   if (loginMode)
     return (
