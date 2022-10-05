@@ -10,8 +10,9 @@ import {
   ProgressBar,
   ButtonGroup,
 } from 'react-bootstrap'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import service_sendIocs from '../services/core/sendIocs'
+import service_getClients from '../services/core/getClients'
 
 function AddIoc() {
   const [isShown, setIsShown] = useState(false)
@@ -20,7 +21,18 @@ function AddIoc() {
   const [file, setFile] = useState<File>()
   const [error, setError] = useState<string>()
   const [progress, setProgress] = useState<number>(0)
-  const [clients, setClients] = useState<any>({ CCOO: false, General: true })
+  const [clients, setClients] = useState<any>({})
+  const [expiration, setExpiration] = useState<number>()
+  const [expirationUnit, setExpirationUnit] = useState<string>('Automatic')
+
+  useEffect(
+    () =>
+      service_getClients((result: Error | Array<any>) => {
+        if (result instanceof Error) setError(result.message)
+        else setClients(result.reduce((a, v) => ({ ...a, [v]: false }), {}))
+      }),
+    []
+  )
 
   const onToggleHandler = (isOpen: boolean, metadata: any) => {
     if (metadata.source !== 'select') {
@@ -43,13 +55,24 @@ function AddIoc() {
     e.preventDefault()
     setError('')
     setProgress(0)
-    if (file) service_sendIocs(file, undefined, clients, setState)
+    if (file) service_sendIocs(file, undefined, clients, '', setState)
   }
   const sendIocs = (e: any) => {
     e.preventDefault()
+    var exp = null
+    if (expirationUnit !== 'Automatic') {
+      if (!expiration) {
+        setError(
+          'You need to introduce a Expiration time or select Automatic mode'
+        )
+        return
+      }
+      var mul = expirationUnit === 'Days' ? 60 * 60 * 24 : 60 * 60 * 24 * 30
+      exp = Date.now() + expiration * 1000 * mul
+    }
     setError('')
     setProgress(0)
-    if (iocs !== '') service_sendIocs(undefined, iocs, clients, setState)
+    if (iocs !== '') service_sendIocs(undefined, iocs, clients, exp, setState)
   }
   const getClients = () => {
     var res: Array<any> = []
@@ -90,6 +113,34 @@ function AddIoc() {
           <div className="mb-3">
             {progress ? <ProgressBar animated now={progress} /> : ''}
           </div>
+          <InputGroup className="mb-3">
+            <InputGroup.Text>Expiration time:</InputGroup.Text>
+            {expirationUnit !== 'Automatic' && (
+              <Form.Control
+                type="number"
+                aria-label="Expiration time"
+                onChange={(e: any) => setExpiration(e.target.value)}
+              />
+            )}
+
+            <DropdownButton
+              variant="outline-secondary"
+              title={expirationUnit}
+              id="input-group-dropdown-2"
+              align="end"
+            >
+              <Dropdown.Item onClick={() => setExpirationUnit('Automatic')}>
+                Automatic
+              </Dropdown.Item>
+              <Dropdown.Divider />
+              <Dropdown.Item onClick={() => setExpirationUnit('Days')}>
+                Days
+              </Dropdown.Item>
+              <Dropdown.Item onClick={() => setExpirationUnit('Months')}>
+                Months
+              </Dropdown.Item>
+            </DropdownButton>
+          </InputGroup>
           <ButtonGroup className="mb-3">
             {progress === 100 ? (
               <>

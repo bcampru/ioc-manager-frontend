@@ -10,8 +10,9 @@ import {
   ProgressBar,
   ButtonGroup,
 } from 'react-bootstrap'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import service_deleteIocs from '../services/core/deleteIocs'
+import service_getClients from '../services/core/getClients'
 
 function DeleteIoc() {
   const [isShown, setIsShown] = useState(false)
@@ -20,7 +21,16 @@ function DeleteIoc() {
   const [file, setFile] = useState<File>()
   const [error, setError] = useState<string>()
   const [progress, setProgress] = useState<number>(0)
-  const [clients, setClients] = useState<any>({ CCOO: false, General: true })
+  const [clients, setClients] = useState<any>({})
+
+  useEffect(
+    () =>
+      service_getClients((result: Error | Array<any>) => {
+        if (result instanceof Error) setError(result.message)
+        else setClients(result.reduce((a, v) => ({ ...a, [v]: false }), {}))
+      }),
+    []
+  )
 
   const onToggleHandler = (isOpen: boolean, metadata: any) => {
     if (metadata.source !== 'select') {

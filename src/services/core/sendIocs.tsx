@@ -4,7 +4,8 @@ import service_logout from '../auth/logout'
 export default function service_sendIocs(
   file: File | undefined,
   iocs: string | undefined,
-  clients: string,
+  clients: any,
+  expiration: any,
   callback: Function
 ) {
   const endpoint: string = '/load'
@@ -61,11 +62,14 @@ export default function service_sendIocs(
     callback('You need to provide either a file or a text with IOCs', 0)
     return
   }
-  if (clients) formData.append('clients', JSON.stringify(clients))
-  else {
-    callback('You need to select at least one client', 0)
-    return
-  }
+
+  let cl: Array<string> = []
+  Object.keys(clients).forEach((key) => {
+    if (clients[key] === true) cl.push(key)
+  })
+
+  formData.append('clients', JSON.stringify(cl))
+  formData.append('expiration', expiration)
 
   if (!process.env.REACT_APP_API_URL)
     return callback(new Error("API isn't specified"))
