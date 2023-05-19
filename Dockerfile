@@ -11,7 +11,7 @@ EXPOSE 3000
 COPY package.json ./
 COPY package-lock.json ./
 RUN npm install
-
+RUN npm install -g serve
 # add app
 COPY . ./
 RUN npm run build
